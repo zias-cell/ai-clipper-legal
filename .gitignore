@@ -1,0 +1,7 @@
+node_modules/
+output/
+*.mp4
+*.mp3
+*.wav
+.newstok-cache.json
+.DS_Store
