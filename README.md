@@ -30,24 +30,30 @@ headlines, writes punchy scripts, narrates them, and renders ready-to-post
 
 ## Quick start
 
+### Option A — One-click public link (no terminal)
+
+Don't want to touch a terminal? Deploy it to Render and get a public
+`https://…` URL you can open from any device:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/zias-cell/ai-clipper-legal/tree/claude/tiktok-news-video-maker-W8CEF)
+
+1. Click the button → sign in with GitHub (free).
+2. Render reads `render.yaml` + `Dockerfile` and builds it (~3–5 min).
+3. You get a live URL like `https://news-tok-dashboard.onrender.com`.
+
+On a host (unlike a static site) FFmpeg rendering and the news feeds work,
+and the image includes `edge-tts`, so videos come out **with neural voiceover**.
+> Note: Render's free tier sleeps when idle, so the first load after a pause
+> takes ~30s to wake up.
+
+### Option B — Run locally
+
 ```bash
 npm install
+npm run dashboard        # → http://localhost:4321
 ```
 
-### Option A — Web dashboard (recommended)
-
-```bash
-npm run dashboard
-# then open http://localhost:4321
-```
-
-A local control panel where you pick a category and story count, preview the
-day's headlines, hit **Generate**, watch live render progress, and preview /
-download the finished MP4 — all rendered locally on your machine.
-
-> Set a custom port with `PORT=8080 npm run dashboard`.
-
-### Option B — CLI
+### Option C — CLI
 
 ```bash
 # Preview today's headlines (no video)

@@ -1,0 +1,11 @@
+# One-click deploy blueprint for Render (https://render.com).
+# Render builds the Dockerfile, runs the dashboard, and gives it a public
+# https URL. It injects PORT automatically; src/server.js honors it.
+services:
+  - type: web
+    name: news-tok-dashboard
+    runtime: docker
+    plan: free
+    branch: claude/tiktok-news-video-maker-W8CEF
+    healthCheckPath: /
+    autoDeploy: true
