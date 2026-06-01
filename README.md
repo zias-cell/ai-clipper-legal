@@ -32,7 +32,24 @@ headlines, writes punchy scripts, narrates them, and renders ready-to-post
 
 ```bash
 npm install
+```
 
+### Option A — Web dashboard (recommended)
+
+```bash
+npm run dashboard
+# then open http://localhost:4321
+```
+
+A local control panel where you pick a category and story count, preview the
+day's headlines, hit **Generate**, watch live render progress, and preview /
+download the finished MP4 — all rendered locally on your machine.
+
+> Set a custom port with `PORT=8080 npm run dashboard`.
+
+### Option B — CLI
+
+```bash
 # Preview today's headlines (no video)
 node bin/clipper.js list -c politics -n 10
 
@@ -110,6 +127,11 @@ fetchNews ──► scriptWriter ──► tts ──► videoMaker ──► co
 4. **`captions.js`** word-wraps text and distributes audio duration across beats.
 5. **`videoMaker.js`** renders each clip (gradient + progress bar + ASS captions)
    and stitches them together.
+
+The **web dashboard** (`src/server.js` + `public/index.html`) is a thin,
+dependency-free HTTP layer over the same `pipeline.js`: it serves the UI, lists
+headlines, starts render jobs, and streams progress to the browser over
+Server-Sent Events.
 
 ---
 

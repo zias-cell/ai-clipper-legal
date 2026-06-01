@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>News-Tok Dashboard</title>
+<style>
+  :root {
+    --bg: #0c0e16; --panel: #161a27; --panel2: #1f2435;
+    --text: #eef1f8; --muted: #97a0b8; --line: #2a3044;
+    --politics: #2e7df6; --celebrity: #ff2d78; --mixed: #ffb703;
+    --accent: var(--mixed);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  header {
+    padding: 22px 28px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .brand {
+    font-weight: 800; letter-spacing: .5px; font-size: 20px;
+    background: var(--accent); color: #08101f; padding: 6px 12px; border-radius: 10px;
+  }
+  header small { color: var(--muted); }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px; display: grid;
+    grid-template-columns: 1.1fr .9fr; gap: 24px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  h2 { margin: 0 0 14px; font-size: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
+  .field { flex: 1; min-width: 140px; }
+  select, input[type=number] {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--text); font-size: 15px;
+  }
+  .btns { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    border: 0; border-radius: 10px; padding: 11px 18px; font-size: 14px; font-weight: 600;
+    cursor: pointer; color: #08101f; background: var(--accent);
+  }
+  button.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .pill { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;
+    background: var(--accent); color:#08101f; text-transform: uppercase; letter-spacing:.4px; }
+  ul.headlines { list-style: none; margin: 14px 0 0; padding: 0; max-height: 360px; overflow:auto; }
+  ul.headlines li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  ul.headlines li:last-child { border-bottom: 0; }
+  ul.headlines .src { color: var(--muted); font-size: 12px; }
+  .progress { height: 10px; background: var(--panel2); border-radius: 999px; overflow: hidden; margin: 8px 0 14px; }
+  .progress > span { display:block; height:100%; width:0; background: var(--accent); transition: width .3s; }
+  pre.log {
+    background: #0a0c14; border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+    height: 220px; overflow: auto; margin: 0; font-size: 13px; color: #cfe3ff; white-space: pre-wrap;
+  }
+  video { width: 100%; border-radius: 12px; margin-top: 14px; background:#000; max-height: 520px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .hidden { display: none; }
+  .err { color: #ff8585; }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">NEWS TOK</span>
+  <div><strong>Dashboard</strong><br><small>Daily politics &amp; celebrity news → vertical videos</small></div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1 · Choose your feed</h2>
+    <div class="row">
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category">
+          <option value="mixed">Mixed (politics + celebrity)</option>
+          <option value="politics">Politics</option>
+          <option value="celebrity">Celebrity</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="count">Stories in video</label>
+        <input id="count" type="number" min="1" max="10" value="5" />
+      </div>
+    </div>
+    <div class="btns">
+      <button id="previewBtn" class="secondary">Preview headlines</button>
+      <button id="generateBtn">🎬 Generate video</button>
+    </div>
+    <ul class="headlines" id="headlines"></ul>
+  </section>
+
+  <section class="card">
+    <h2>2 · Render</h2>
+    <div class="progress"><span id="bar"></span></div>
+    <pre class="log" id="log">Pick a category and hit “Generate video”. Progress shows here.</pre>
+    <div id="result" class="hidden">
+      <video id="player" controls playsinline></video>
+      <div class="btns">
+        <a id="downloadLink" download><button>⬇ Download MP4</button></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const categoryEl = $('category'), countEl = $('count');
+const logEl = $('log'), barEl = $('bar');
+
+const ACCENTS = { mixed: '#ffb703', politics: '#2e7df6', celebrity: '#ff2d78' };
+function syncAccent() {
+  document.documentElement.style.setProperty('--accent', ACCENTS[categoryEl.value] || ACCENTS.mixed);
+}
+categoryEl.addEventListener('change', syncAccent);
+syncAccent();
+
+function log(line, cls) {
+  const div = document.createElement('div');
+  if (cls) div.className = cls;
+  div.textContent = line;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function resetLog() { logEl.textContent = ''; barEl.style.width = '0'; }
+
+$('previewBtn').addEventListener('click', async () => {
+  const list = $('headlines');
+  list.innerHTML = '<li class="muted">Fetching headlines…</li>';
+  try {
+    const r = await fetch(`/api/headlines?category=${categoryEl.value}&count=${countEl.value}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed');
+    if (!data.stories.length) { list.innerHTML = '<li class="muted">No stories found. Check your internet connection.</li>'; return; }
+    list.innerHTML = data.stories.map(s =>
+      `<li><span class="pill">${s.category}</span> <strong>${escapeHtml(s.title)}</strong>
+       <div class="src">${escapeHtml(s.source)}</div></li>`).join('');
+  } catch (e) {
+    list.innerHTML = `<li class="err">${escapeHtml(e.message)}</li>`;
+  }
+});
+
+$('generateBtn').addEventListener('click', async () => {
+  const btn = $('generateBtn');
+  btn.disabled = true; $('previewBtn').disabled = true;
+  $('result').classList.add('hidden');
+  resetLog();
+  log('Starting render…');
+  try {
+    const r = await fetch('/api/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: categoryEl.value, count: Number(countEl.value) }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed to start');
+    streamJob(data.jobId);
+  } catch (e) {
+    log(e.message, 'err'); btn.disabled = false; $('previewBtn').disabled = false;
+  }
+});
+
+function streamJob(jobId) {
+  const es = new EventSource(`/api/events/${jobId}`);
+  es.addEventListener('progress', (ev) => {
+    const d = JSON.parse(ev.data);
+    log(d.message);
+    if (d.total) barEl.style.width = Math.min(100, Math.round((d.step / d.total) * 100)) + '%';
+  });
+  es.addEventListener('done', (ev) => {
+    const d = JSON.parse(ev.data);
+    barEl.style.width = '100%';
+    log('✅ Video ready: ' + d.file);
+    const player = $('player');
+    player.src = d.video;
+    $('downloadLink').href = d.video + '?download=1';
+    $('result').classList.remove('hidden');
+    finish(es);
+  });
+  es.addEventListener('error', (ev) => {
+    try { log(JSON.parse(ev.data).message, 'err'); } catch { log('Stream error', 'err'); }
+    finish(es);
+  });
+}
+function finish(es) {
+  es.close();
+  $('generateBtn').disabled = false; $('previewBtn').disabled = false;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+</script>
+</body>
+</html>

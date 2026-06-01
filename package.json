@@ -7,7 +7,8 @@
     "newstok": "bin/clipper.js"
   },
   "scripts": {
-    "start": "node bin/clipper.js",
+    "start": "node src/server.js",
+    "dashboard": "node src/server.js",
     "make": "node bin/clipper.js make",
     "list": "node bin/clipper.js list"
   },

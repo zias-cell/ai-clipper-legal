@@ -16,18 +16,25 @@ function stamp() {
 }
 
 // Run the pipeline. Options override config.pipeline.
+// Pass opts.onProgress({step,total,message}) to receive live progress
+// (the web dashboard uses this); it defaults to logging to the console.
 export async function run(opts = {}) {
   const category = opts.category || config.pipeline.category;
   const count = opts.count || config.pipeline.storiesPerVideo;
   const outDir = opts.outputDir || config.pipeline.outputDir;
   const keepClips = opts.keepClips || false;
+  const total = count;
+  const emit = (message, step = null) => {
+    if (opts.onProgress) opts.onProgress({ step, total, message });
+    else console.log(message);
+  };
 
-  console.log(`\n📰 Fetching ${category} news...`);
+  emit(`📰 Fetching ${category} news...`, 0);
   const stories = (await fetchNews({ category })).slice(0, count);
   if (stories.length === 0) {
     throw new Error('No stories fetched. Check network access to the RSS feeds in src/config.js.');
   }
-  console.log(`   Got ${stories.length} stories.\n`);
+  emit(`   Got ${stories.length} stories.`, 0);
 
   const workDir = path.join(outDir, `run-${stamp()}`);
   await fs.mkdir(workDir, { recursive: true });
@@ -36,27 +43,27 @@ export async function run(opts = {}) {
   for (let i = 0; i < stories.length; i++) {
     const story = stories[i];
     const script = writeScript(story);
-    console.log(`🎬 [${i + 1}/${stories.length}] ${story.title.slice(0, 60)}`);
+    emit(`🎬 [${i + 1}/${stories.length}] ${story.title.slice(0, 60)}`, i);
 
     const audioOut = path.join(workDir, `audio-${i}-${slug(story.title)}.mp3`);
     const audio = await synthesize(script.narration, audioOut, estimateDuration(script));
-    console.log(`   🔊 voice: ${audio.provider} (${audio.durationSec.toFixed(1)}s)`);
+    emit(`   🔊 voice: ${audio.provider} (${audio.durationSec.toFixed(1)}s)`, i);
 
     const clipOut = path.join(workDir, `clip-${i}-${slug(story.title)}.mp4`);
     await makeClip(script, audio, clipOut);
     clips.push(clipOut);
-    console.log(`   ✅ rendered`);
+    emit(`   ✅ rendered clip ${i + 1}`, i + 1);
   }
 
   const finalOut = path.join(outDir, `news-tok-${category}-${stamp()}.mp4`);
-  console.log(`\n🪡 Stitching ${clips.length} clips...`);
+  emit(`🪡 Stitching ${clips.length} clips...`, total);
   await concatClips(clips, finalOut);
 
   if (!keepClips) {
     await fs.rm(workDir, { recursive: true, force: true });
   }
 
-  console.log(`\n🎉 Done -> ${finalOut}\n`);
+  emit(`🎉 Done -> ${finalOut}`, total);
   return finalOut;
 }
 
