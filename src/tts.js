@@ -19,13 +19,21 @@ import config from './config.js';
 const exec = promisify(execFile);
 const ffprobePath = ffprobeStatic.path;
 
-async function commandExists(cmd) {
+// A command "exists" if invoking it doesn't fail with ENOENT (not found).
+// We can't rely on a zero exit: some tools (or older versions) error on the
+// probe flag yet are perfectly installed — only ENOENT means truly missing.
+async function commandExists(cmd, probeArgs = ['--help']) {
   try {
-    await exec(cmd, ['--version'], { timeout: 5000 });
+    await exec(cmd, probeArgs, { timeout: 8000 });
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    return err.code !== 'ENOENT';
   }
+}
+
+// Swap (or append) a file extension safely, even when the path has none.
+function withExt(p, ext) {
+  return p.replace(/\.[^./\\]*$/, '') + ext;
 }
 
 // Probe an audio file's duration in seconds.
@@ -42,7 +50,7 @@ export async function probeDuration(file) {
 // --- edge-tts (neural, online, free) ---
 async function tryEdge(text, outPath) {
   if (!(await commandExists('edge-tts'))) return null;
-  const mp3 = outPath.replace(/\.\w+$/, '.mp3');
+  const mp3 = withExt(outPath, '.mp3');
   await exec('edge-tts', [
     '--voice', config.tts.edgeVoice,
     '--rate', config.tts.edgeRate,
@@ -57,7 +65,7 @@ async function tryEspeak(text, outPath) {
   const bin = (await commandExists('espeak-ng')) ? 'espeak-ng'
     : (await commandExists('espeak')) ? 'espeak' : null;
   if (!bin) return null;
-  const wav = outPath.replace(/\.\w+$/, '.wav');
+  const wav = withExt(outPath, '.wav');
   await exec(bin, ['-v', config.tts.espeakVoice, '-s', '165', '-w', wav, text], {
     timeout: 60000,
   });
@@ -66,7 +74,7 @@ async function tryEspeak(text, outPath) {
 
 // --- silent fallback (always works) ---
 async function trySilent(text, outPath, estDurationSec) {
-  const wav = outPath.replace(/\.\w+$/, '.wav');
+  const wav = withExt(outPath, '.wav');
   const dur = Math.max(3, estDurationSec || 5).toFixed(2);
   await exec(ffmpegPath, [
     '-y',

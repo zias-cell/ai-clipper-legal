@@ -19,12 +19,36 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-// Strip HTML tags and collapse whitespace from RSS summaries.
-function clean(text = '') {
+// Common named HTML entities seen in news RSS.
+const NAMED_ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”',
+  mdash: '—', ndash: '–', hellip: '…', '#39': "'",
+};
+
+// Decode numeric (&#39; / &#x27;) and common named HTML entities.
+function decodeEntities(text) {
   return text
-    .replace(/<!\[CDATA\[|\]\]>/g, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => safeCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => safeCodePoint(parseInt(d, 10)))
+    .replace(/&([a-z0-9#]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? ' ');
+}
+
+function safeCodePoint(code) {
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return ' ';
+  }
+}
+
+// Strip HTML tags, decode entities, and collapse whitespace from RSS summaries.
+function clean(text = '') {
+  return decodeEntities(
+    text
+      .replace(/<!\[CDATA\[|\]\]>/g, '')
+      .replace(/<[^>]+>/g, ' '),
+  )
     .replace(/\s+/g, ' ')
     .trim();
 }

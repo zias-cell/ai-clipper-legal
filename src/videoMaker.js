@@ -152,8 +152,11 @@ export async function makeClip(script, audio, outPath) {
     outPath,
   ];
 
-  await exec(ffmpegPath, args, { timeout: 180000, maxBuffer: 1024 * 1024 * 32 });
-  await fs.rm(tmpDir, { recursive: true, force: true });
+  try {
+    await exec(ffmpegPath, args, { timeout: 180000, maxBuffer: 1024 * 1024 * 32 });
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
   return outPath;
 }
 

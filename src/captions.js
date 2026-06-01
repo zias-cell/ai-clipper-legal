@@ -25,9 +25,12 @@ export function wrap(text, maxChars = config.text.maxCharsPerLine) {
 // Split `totalDuration` across beats, weighted by word count, with a small
 // minimum per beat. Returns beats annotated with { start, end, lines }.
 export function timeline(beats, totalDuration) {
+  if (!beats.length) return [];
   const counts = beats.map((b) => Math.max(1, b.text.split(/\s+/).filter(Boolean).length));
   const totalWords = counts.reduce((a, b) => a + b, 0);
-  const minPerBeat = 1.2;
+  // Floor per beat, but never reserve more than the clip can hold — otherwise
+  // a short clip with many beats would push the last beat's start past its end.
+  const minPerBeat = Math.min(1.2, totalDuration / (beats.length + 1));
   const reserved = minPerBeat * beats.length;
   const flexible = Math.max(0, totalDuration - reserved);
 
