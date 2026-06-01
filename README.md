@@ -28,32 +28,36 @@ headlines, writes punchy scripts, narrates them, and renders ready-to-post
 
 ---
 
-## Quick start
+## Quick start — 100% local
 
-### Option A — One-click public link (no terminal)
+### Easiest: double-click launcher (no typing)
 
-Don't want to touch a terminal? Deploy it to Render and get a public
-`https://…` URL you can open from any device:
+1. **Download the project:** on GitHub click the green **Code ▾** button →
+   **Download ZIP**, then unzip it.
+2. **Install Node.js** once (free): https://nodejs.org → the big green **LTS**
+   button → run the installer.
+3. **Double-click the launcher** for your system inside the unzipped folder:
+   - **Windows:** `start-windows.bat`
+   - **macOS:** `start-mac.command` *(first time: right-click → Open, to get past
+     the security prompt)*
+   - **Linux:** `start-linux.sh`
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/zias-cell/ai-clipper-legal/tree/claude/tiktok-news-video-maker-W8CEF)
+It installs everything the first time, starts the dashboard, and opens
+**http://localhost:4321** in your browser automatically. Keep that little
+window open while you use it; closing it stops the app. Everything runs on
+your machine — nothing is uploaded anywhere.
 
-1. Click the button → sign in with GitHub (free).
-2. Render reads `render.yaml` + `Dockerfile` and builds it (~3–5 min).
-3. You get a live URL like `https://news-tok-dashboard.onrender.com`.
-
-On a host (unlike a static site) FFmpeg rendering and the news feeds work,
-and the image includes `edge-tts`, so videos come out **with neural voiceover**.
-> Note: Render's free tier sleeps when idle, so the first load after a pause
-> takes ~30s to wake up.
-
-### Option B — Run locally
+### Or with a terminal
 
 ```bash
 npm install
 npm run dashboard        # → http://localhost:4321
 ```
 
-### Option C — CLI
+> For neural voiceover, also run `pip install edge-tts` (free, no key).
+> Without it, videos use on-screen captions with no spoken audio.
+
+### CLI
 
 ```bash
 # Preview today's headlines (no video)
