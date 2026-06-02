@@ -7,6 +7,13 @@ const FEED_TIMEOUT_MS = 15000;
 const parser = new Parser({
   timeout: FEED_TIMEOUT_MS,
   headers: { 'User-Agent': 'news-tok/1.0 (+https://example.com)' },
+  customFields: {
+    item: [
+      ['media:content', 'mediaContent', { keepArray: true }],
+      ['media:thumbnail', 'mediaThumbnail', { keepArray: true }],
+      ['content:encoded', 'contentEncoded'],
+    ],
+  },
 });
 
 // Hard timeout wrapper: rss-parser's own `timeout` doesn't always abort a
@@ -53,6 +60,28 @@ function clean(text = '') {
     .trim();
 }
 
+// Pull the story's own published image out of the various RSS shapes:
+// <enclosure>, <media:content>, <media:thumbnail>, or the first <img> in
+// the article body. This is the image most related to the story.
+function extractImage(item) {
+  const isImg = (url = '', type = '') =>
+    /^https?:\/\//i.test(url) && (/^image\//i.test(type) || /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url));
+
+  if (item.enclosure && isImg(item.enclosure.url, item.enclosure.type)) return item.enclosure.url;
+
+  for (const m of item.mediaContent || []) {
+    const a = m && m.$;
+    if (a && isImg(a.url, a.type || a.medium)) return a.url;
+  }
+  for (const m of item.mediaThumbnail || []) {
+    if (m && m.$ && isImg(m.$.url)) return m.$.url;
+  }
+  const body = item.contentEncoded || item.content || '';
+  const match = body.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (match && isImg(match[1])) return match[1];
+  return null;
+}
+
 function normalize(item, feed) {
   const title = clean(item.title);
   const summary = clean(item.contentSnippet || item.content || item.summary || '');
@@ -63,6 +92,7 @@ function normalize(item, feed) {
     source: feed.source,
     category: feed.category,
     published: item.isoDate || item.pubDate || null,
+    image: extractImage(item),
   };
 }
 

@@ -6,6 +6,7 @@ import { fetchNews } from './fetchNews.js';
 import { writeScript, estimateDuration } from './scriptWriter.js';
 import { synthesize } from './tts.js';
 import { makeClip, concatClips } from './videoMaker.js';
+import { resolveBackground } from './media.js';
 
 function slug(str) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
@@ -49,8 +50,23 @@ export async function run(opts = {}) {
     const audio = await synthesize(script.narration, audioOut, estimateDuration(script));
     emit(`   🔊 voice: ${audio.provider} (${audio.durationSec.toFixed(1)}s)`, i);
 
+    // Pick the most related background (article photo / topic b-roll / gradient).
+    let background = { type: 'gradient' };
+    try {
+      background = await resolveBackground(story, workDir);
+    } catch { /* keep gradient */ }
+    const label = background.type === 'image' ? '🖼️ photo'
+      : background.type === 'video' ? '🎞️ video' : '🎨 gradient';
+    emit(`   ${label} background`, i);
+
     const clipOut = path.join(workDir, `clip-${i}-${slug(story.title)}.mp4`);
-    await makeClip(script, audio, clipOut);
+    try {
+      await makeClip(script, audio, clipOut, background);
+    } catch (err) {
+      // A bad/undecodable media file shouldn't kill the run — fall back.
+      emit(`   ⚠️ background failed (${err.message.slice(0, 40)}), using gradient`, i);
+      await makeClip(script, audio, clipOut, { type: 'gradient' });
+    }
     clips.push(clipOut);
     emit(`   ✅ rendered clip ${i + 1}`, i + 1);
   }

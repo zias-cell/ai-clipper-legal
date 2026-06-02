@@ -57,6 +57,25 @@ export const config = {
     wordsPerMinute: 165,
   },
 
+  // ----- Backgrounds / media -----
+  // Each story gets the most RELATED visual available, in this order:
+  //   1. the article's own published photo  (Ken Burns slow-zoom; no key)
+  //   2. topic-matched stock video b-roll    (Pexels; needs a free API key)
+  //   3. topic-matched stock photo           (Pexels; needs a free API key)
+  //   4. the category gradient                (always available)
+  // We never use random/unrelated clips — only the article image or footage
+  // matched to keywords pulled from the headline.
+  media: {
+    // Put your free Pexels key here or in the PEXELS_API_KEY env var to enable
+    // stock video/photo b-roll. Leave empty to use only article images.
+    pexelsApiKey: process.env.PEXELS_API_KEY || '',
+    preferVideo: true,        // try stock video before stock photo
+    kenBurns: true,           // slow zoom/pan on still images
+    scrimOpacity: 0.45,       // dark overlay so captions stay readable (0..1)
+    downloadTimeoutMs: 15000,
+    maxStockSeconds: 10,      // trim/loop stock video to at most this long
+  },
+
   // ----- Pipeline defaults -----
   pipeline: {
     storiesPerVideo: 5,

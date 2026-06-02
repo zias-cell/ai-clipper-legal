@@ -112,24 +112,68 @@ function escPath(p) {
 
 // --- Renderer ------------------------------------------------------------
 
-// Render one clip. `script` comes from scriptWriter, `audio` from tts.
-export async function makeClip(script, audio, outPath) {
+// Build the FFmpeg input args + the background filter chain ending in [bg],
+// depending on whether the background is the article image, stock video, or
+// the category gradient. Audio is always input 0.
+function backgroundStage(background, script, dur, frames) {
+  const [g1, g2] = GRADIENTS[script.category] || GRADIENTS.default;
+  // Oversize for stills so the Ken Burns zoom has room to move.
+  const bigW = Math.round(width * 1.5);
+  const bigH = Math.round(height * 1.5);
+
+  if (background && background.type === 'image') {
+    const motion = config.media.kenBurns
+      ? `,zoompan=z='min(zoom+0.0006,1.25)':d=${frames}:` +
+        `x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${width}x${height}:fps=${fps}`
+      : `,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    const pre = config.media.kenBurns
+      ? `scale=${bigW}:${bigH}:force_original_aspect_ratio=increase,crop=${bigW}:${bigH}`
+      : `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
+    return {
+      inputs: ['-loop', '1', '-i', background.path],
+      chain: `[1:v]${pre}${config.media.kenBurns ? motion : ''}[bg]`,
+    };
+  }
+
+  if (background && background.type === 'video') {
+    return {
+      inputs: ['-stream_loop', '-1', '-i', background.path],
+      chain: `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase,` +
+        `crop=${width}:${height},fps=${fps},setpts=PTS-STARTPTS[bg]`,
+    };
+  }
+
+  // Gradient fallback.
+  return {
+    inputs: [],
+    chain: `gradients=s=${width}x${height}:c0=${g1}:c1=${g2}:x0=0:y0=0:x1=${width}:y1=${height}:` +
+      `duration=${dur}:speed=0.015[bg]`,
+  };
+}
+
+// Render one clip. `script` comes from scriptWriter, `audio` from tts,
+// `background` from media.resolveBackground (defaults to the gradient).
+export async function makeClip(script, audio, outPath, background = { type: 'gradient' }) {
   const duration = audio.durationSec || 6;
   const beats = timeline(script.beats, duration);
+  const frames = Math.max(1, Math.round(duration * fps));
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'newstok-'));
   const assPath = path.join(tmpDir, 'subs.ass');
   await fs.writeFile(assPath, buildAss(beats, duration, script.category, script.source), 'utf8');
 
-  const [g1, g2] = GRADIENTS[script.category] || GRADIENTS.default;
   const accent = (config.text.accent[script.category] || config.text.accent.default).replace('#', '0x');
   const barW = width - 120;
   const dur = duration.toFixed(2);
+  const scrim = config.media.scrimOpacity;
 
+  const bg = backgroundStage(background, script, dur, frames);
   const filter = [
-    `gradients=s=${width}x${height}:c0=${g1}:c1=${g2}:x0=0:y0=0:x1=${width}:y1=${height}:` +
-      `duration=${dur}:speed=0.015,format=yuv420p,setsar=1[bg]`,
-    `[bg]drawbox=x=60:y=ih-90:w=${barW}:h=14:color=white@0.25:t=fill[pbg]`,
+    bg.chain,
+    // Normalize, then darken so white captions stay readable over any photo.
+    `[bg]format=yuv420p,setsar=1[bgf]`,
+    `[bgf]drawbox=x=0:y=0:w=iw:h=ih:color=black@${scrim}:t=fill[scr]`,
+    `[scr]drawbox=x=60:y=ih-90:w=${barW}:h=14:color=white@0.25:t=fill[pbg]`,
     `[pbg]drawbox=x=60:y=ih-90:w='${barW}*t/${dur}':h=14:color=${accent}@0.95:t=fill[bar]`,
     `[bar]subtitles=filename='${escPath(assPath)}':fontsdir=/usr/share/fonts[vout]`,
   ].join(';');
@@ -138,6 +182,7 @@ export async function makeClip(script, audio, outPath) {
   const args = [
     '-y',
     '-i', audio.audioPath,
+    ...bg.inputs,
     '-filter_complex', filter,
     '-map', '[vout]',
     '-map', '0:a',

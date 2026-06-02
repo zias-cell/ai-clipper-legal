@@ -111,6 +111,34 @@ News-Tok auto-detects whichever is available. Configure the voice in
 
 ---
 
+## Backgrounds: real photos & video (not just text)
+
+Every story gets the most **related** visual available — never random clips:
+
+1. **The article's own news photo** — pulled straight from the RSS item and
+   given a slow Ken Burns zoom. Needs no API key and is the most on-topic
+   image possible. This is automatic for most stories.
+2. **Topic-matched stock video b-roll** — optional. Set a free
+   [Pexels](https://www.pexels.com/api/) API key and News-Tok searches footage
+   using the key subject of each headline (e.g. *"Senate"*, *"wildfire"*),
+   not just the category.
+3. **Topic-matched stock photo** — same, as a photo fallback.
+4. **Category gradient** — only if nothing related is found.
+
+A dark scrim is laid over the footage so the white captions stay readable.
+
+```bash
+# Optional: enable stock video/photo b-roll (free key from pexels.com/api)
+# macOS/Linux:
+PEXELS_API_KEY=your_key_here npm run dashboard
+# Windows (PowerShell):
+$env:PEXELS_API_KEY="your_key_here"; npm run dashboard
+```
+
+> Honest note: free stock is *thematic* footage of the topic, not literal
+> footage of the specific event (that's licensed news material no free tool can
+> pull). The article photo is the most event-specific visual available.
+
 ## Configuration
 
 All tunables live in [`src/config.js`](src/config.js):
