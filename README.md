@@ -118,11 +118,12 @@ Every story gets the most **related** visual available — never random clips:
 1. **The article's own news photo** — pulled straight from the RSS item and
    given a slow Ken Burns zoom. Needs no API key and is the most on-topic
    image possible. This is automatic for most stories.
-2. **Topic-matched stock video b-roll** — optional. Set a free
-   [Pexels](https://www.pexels.com/api/) API key and News-Tok searches footage
-   using the key subject of each headline (e.g. *"Senate"*, *"wildfire"*),
-   not just the category.
-3. **Topic-matched stock photo** — same, as a photo fallback.
+2. **Topic-matched photo from [Openverse](https://openverse.org)** — free and
+   **keyless** (no signup), searched by the key subject of each headline. On by
+   default, so topic photos work out of the box. Photos are credited on-screen.
+3. **Topic-matched stock video b-roll** — optional upgrade. Set a free
+   [Pexels](https://www.pexels.com/api/) API key (`PEXELS_API_KEY`) for moving
+   footage searched by the headline subject (e.g. *"Senate"*, *"wildfire"*).
 4. **Category gradient** — only if nothing related is found.
 
 A dark scrim is laid over the footage so the white captions stay readable.

@@ -66,10 +66,13 @@ export const config = {
   // We never use random/unrelated clips — only the article image or footage
   // matched to keywords pulled from the headline.
   media: {
-    // Put your free Pexels key here or in the PEXELS_API_KEY env var to enable
-    // stock video/photo b-roll. Leave empty to use only article images.
+    // Openverse: free, keyless image search (openly-licensed photos). On by
+    // default so topic photos work with NO signup/API key.
+    useOpenverse: true,
+    // Optional upgrade for stock VIDEO b-roll: a free Pexels key
+    // (https://www.pexels.com/api/) in PEXELS_API_KEY. Leave empty to skip.
     pexelsApiKey: process.env.PEXELS_API_KEY || '',
-    preferVideo: true,        // try stock video before stock photo
+    preferVideo: true,        // if a Pexels key is set, try video before photo
     kenBurns: true,           // slow zoom/pan on still images
     scrimOpacity: 0.45,       // dark overlay so captions stay readable (0..1)
     downloadTimeoutMs: 15000,

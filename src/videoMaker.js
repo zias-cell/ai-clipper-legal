@@ -55,7 +55,7 @@ function assText(text) {
 }
 
 // Build the ASS subtitle document for one clip.
-function buildAss(beats, duration, category, source) {
+function buildAss(beats, duration, category, source, attribution) {
   const t = config.text;
   const accent = t.accent[category] || t.accent.default;
   const white = '&H00FFFFFF';
@@ -70,6 +70,8 @@ function buildAss(beats, duration, category, source) {
     `Style: Pill,DejaVu Sans,34,${black},${black},${white},${black},1,0,0,0,100,100,2,0,3,14,0,8,0,0,150,1`,
     `Style: Caption,DejaVu Sans,${t.fontSize},${white},${white},${box},${black},1,0,0,0,100,100,0,0,3,24,0,5,90,90,0,1`,
     `Style: Credit,DejaVu Sans,30,${white},${white},${black},${black},0,0,0,0,100,100,0,0,1,2,1,2,0,0,150,1`,
+    // Tiny photo attribution, bottom-left.
+    `Style: Attrib,DejaVu Sans,20,&H00CCCCCC,&H00CCCCCC,${black},${black},0,0,0,0,100,100,0,0,1,2,1,1,30,30,40,1`,
   ];
 
   const events = [];
@@ -79,6 +81,9 @@ function buildAss(beats, duration, category, source) {
   events.push(`Dialogue: 0,${full},${end},Brand,,0,0,0,,NEWS TOK`);
   events.push(`Dialogue: 0,${full},${end},Pill,,0,0,0,,${assText(category.toUpperCase())}`);
   events.push(`Dialogue: 0,${full},${end},Credit,,0,0,0,,${assText('Source: ' + source)}`);
+  if (attribution) {
+    events.push(`Dialogue: 0,${full},${end},Attrib,,0,0,0,,${assText(attribution)}`);
+  }
   // Timed captions.
   for (const beat of beats) {
     events.push(
@@ -160,7 +165,7 @@ export async function makeClip(script, audio, outPath, background = { type: 'gra
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'newstok-'));
   const assPath = path.join(tmpDir, 'subs.ass');
-  await fs.writeFile(assPath, buildAss(beats, duration, script.category, script.source), 'utf8');
+  await fs.writeFile(assPath, buildAss(beats, duration, script.category, script.source, background.attribution), 'utf8');
 
   const accent = (config.text.accent[script.category] || config.text.accent.default).replace('#', '0x');
   const barW = width - 120;

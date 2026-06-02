@@ -66,23 +66,39 @@ function download(url, destBase, depth = 0) {
   });
 }
 
-// Query the Pexels API (JSON). Returns parsed body or throws.
-function pexels(endpoint, query) {
-  const url = `https://api.pexels.com/${endpoint}?query=${encodeURIComponent(query)}` +
-    `&orientation=portrait&per_page=3`;
+// Generic JSON GET helper with optional headers.
+function getJson(url, headers = {}) {
   return new Promise((resolve, reject) => {
     https.get(url, {
-      headers: { Authorization: config.media.pexelsApiKey },
+      headers: { 'User-Agent': 'news-tok/1.0', Accept: 'application/json', ...headers },
       timeout: config.media.downloadTimeoutMs,
     }, (res) => {
       let data = '';
       res.on('data', (c) => (data += c));
       res.on('end', () => {
-        if (res.statusCode !== 200) return reject(new Error(`Pexels HTTP ${res.statusCode}`));
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
         try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
       });
-    }).on('error', reject);
+    }).on('error', reject).on('timeout', function () { this.destroy(new Error('timeout')); });
   });
+}
+
+// Openverse: free, keyless search for openly-licensed images.
+async function openverse(query) {
+  const url = 'https://api.openverse.org/v1/images/' +
+    `?q=${encodeURIComponent(query)}&aspect_ratio=tall&page_size=5&mature=false`;
+  const r = await getJson(url);
+  const hit = (r.results || []).find((x) => x && x.url);
+  if (!hit) return null;
+  const who = hit.creator || hit.source || 'Openverse';
+  return { url: hit.url, attribution: `Photo: ${who} / Openverse` };
+}
+
+// Query the Pexels API (JSON). Returns parsed body or throws.
+function pexels(endpoint, query) {
+  const url = `https://api.pexels.com/${endpoint}?query=${encodeURIComponent(query)}` +
+    `&orientation=portrait&per_page=3`;
+  return getJson(url, { Authorization: config.media.pexelsApiKey });
 }
 
 // Pick the best portrait video file URL from a Pexels video result.
@@ -95,28 +111,37 @@ function bestVideoFile(video) {
 }
 
 // Resolve + download a background for one story into `tmpDir`.
-// Returns { type: 'image'|'video'|'gradient', path? }.
+// Returns { type: 'image'|'video'|'gradient', path?, attribution? }.
 export async function resolveBackground(story, tmpDir) {
   const base = path.join(tmpDir, 'bg-' + Math.random().toString(36).slice(2, 8));
+  const query = keywords(story);
 
   // 1. The article's own photo — most related, no key needed.
   if (story.image) {
     try {
-      const p = await download(story.image, base);
-      return { type: 'image', path: p };
+      return { type: 'image', path: await download(story.image, base) };
     } catch { /* fall through */ }
   }
 
-  // 2 & 3. Topic-matched stock from Pexels (only if a key is configured).
+  // 2. Topic-matched stock VIDEO b-roll (only if a Pexels key is configured).
+  if (config.media.pexelsApiKey && config.media.preferVideo) {
+    try {
+      const r = await pexels('videos/search', query);
+      const link = (r.videos || []).map(bestVideoFile).find(Boolean);
+      if (link) return { type: 'video', path: await download(link, base) };
+    } catch { /* fall through */ }
+  }
+
+  // 3. Topic-matched photo from Openverse — free, NO API key required.
+  if (config.media.useOpenverse) {
+    try {
+      const hit = await openverse(query);
+      if (hit) return { type: 'image', path: await download(hit.url, base), attribution: hit.attribution };
+    } catch { /* fall through */ }
+  }
+
+  // 4. Topic-matched stock photo from Pexels (if a key is configured).
   if (config.media.pexelsApiKey) {
-    const query = keywords(story);
-    if (config.media.preferVideo) {
-      try {
-        const r = await pexels('videos/search', query);
-        const link = (r.videos || []).map(bestVideoFile).find(Boolean);
-        if (link) return { type: 'video', path: await download(link, base) };
-      } catch { /* fall through */ }
-    }
     try {
       const r = await pexels('v1/search', query);
       const src = r.photos && r.photos[0] && (r.photos[0].src.portrait || r.photos[0].src.large2x);
@@ -124,7 +149,7 @@ export async function resolveBackground(story, tmpDir) {
     } catch { /* fall through */ }
   }
 
-  // 4. Fallback: category gradient (handled by the renderer).
+  // 5. Fallback: category gradient (handled by the renderer).
   return { type: 'gradient' };
 }
 
