@@ -43,7 +43,7 @@ export async function run(opts = {}) {
   const clips = [];
   for (let i = 0; i < stories.length; i++) {
     const story = stories[i];
-    const script = writeScript(story);
+    const script = writeScript(story, { isLast: i === stories.length - 1 });
     emit(`🎬 [${i + 1}/${stories.length}] ${story.title.slice(0, 60)}`, i);
 
     const audioOut = path.join(workDir, `audio-${i}-${slug(story.title)}.mp3`);

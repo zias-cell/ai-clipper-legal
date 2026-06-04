@@ -42,6 +42,11 @@ export const config = {
     },
   },
 
+  // ----- Outro / call to action -----
+  // Shown (and read) as the final card at the END of each finished video.
+  // Edit this one line to change the sign-off.
+  callToAction: 'Follow our TikTok page to get notified when we post the next episode!',
+
   // ----- Text to speech -----
   // Providers are tried in order until one succeeds. All are free.
   //  - "edge"   : Microsoft Edge neural voices via the `edge-tts` python pkg

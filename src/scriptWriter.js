@@ -21,13 +21,6 @@ const HOOKS = {
   default: ['Today\'s top story:', 'Quick news update:'],
 };
 
-const OUTROS = [
-  'Follow for your daily news fix.',
-  'Like and follow for more updates.',
-  'What do you think? Drop a comment.',
-  'Stay tuned for more.',
-];
-
 function pick(arr, seed) {
   return arr[Math.abs(seed) % arr.length];
 }
@@ -47,12 +40,14 @@ function tighten(summary, maxSentences = 2) {
 }
 
 // Build the spoken/written script for a single story.
-export function writeScript(story) {
+// `isLast` controls whether the call-to-action outro is appended — it should
+// only appear on the final story of a video (the end of the episode).
+export function writeScript(story, { isLast = true } = {}) {
   const seed = hash(story.title);
   const hookPool = HOOKS[story.category] || HOOKS.default;
   const hook = pick(hookPool, seed);
   const detail = tighten(story.summary) || story.title;
-  const outro = pick(OUTROS, seed >> 3);
+  const outro = isLast ? config.callToAction : null;
 
   // Beats are shown as on-screen captions and read aloud in order.
   const beats = [
@@ -62,7 +57,9 @@ export function writeScript(story) {
   if (detail && detail !== story.title) {
     beats.push({ type: 'detail', text: detail });
   }
-  beats.push({ type: 'outro', text: outro });
+  if (outro) {
+    beats.push({ type: 'outro', text: outro });
+  }
 
   const narration = beats.map((b) => b.text).join(' ');
 
